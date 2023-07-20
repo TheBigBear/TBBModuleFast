@@ -90,7 +90,7 @@ This module uses a custom dependency resolution algorithm that selects the newes
 dependency criteria. If a version of a locally installed module satisfies the "latest" criteria of the dependency graph,
 it will be used rather than fetching what is newest on the gallery. This can be overriden with the `-Update` switch that
 will recheck whats available in the remote.
-
+```
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # 
 # # # Copyright 2023 Justin Grote @justinwgrote
 # # #
@@ -113,3 +113,4 @@ will recheck whats available in the remote.
 # # # OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE
 # # # USE OR OTHER DEALINGS IN THE SOFTWARE.
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # 
+```
