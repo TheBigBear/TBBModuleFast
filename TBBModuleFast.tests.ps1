@@ -1,28 +1,45 @@
+###################################################################################################################################################
+# # # Copyright 2023 Justin Grote @justinwgrote
+# # # 
+# # # Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated documentation files
+# # # (the "Software"), to deal in the Software without restriction, including without limitation the rights to use, copy, modify, merge, publish,
+# # # distribute, sublicense, and/or sell copies of the Software, and to permit persons to whom the Software is furnished to do so, subject to the
+# # # following conditions:
+# # # 
+# # # The above copyright notice and this permission notice shall be included in all copies or substantial portions of the Software.
+# # # 
+# # # THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF 
+# # # MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY
+# # # CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE 
+# # # SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+# # #
+###################################################################################################################################################
+
 using namespace System.Management.Automation
 using namespace System.Collections.Generic
 using namespace System.Diagnostics.CodeAnalysis
-Import-Module ./ModuleFast.psm1 -Force
+Import-Module ./TBBModuleFast.psm1 -Force
 
 BeforeAll {
 	if ($env:MFURI) {
-		$PSDefaultParameterValues['Get-ModuleFastPlan:Source'] = $env:MFURI
+		$PSDefaultParameterValues['Get-TBBModuleFastPlan:Source'] = $env:MFURI
 	}
 }
 
-InModuleScope 'ModuleFast' {
-	Describe 'ModuleFastSpec' {
+InModuleScope 'TBBModuleFast' {
+	Describe 'TBBModuleFastSpec' {
 		Context 'Constructors' {
 			It 'Name' {
-				$spec = [ModuleFastSpec]'Test'
+				$spec = [TBBModuleFastSpec]'Test'
 				$spec.Name | Should -Be 'Test'
 				$spec.Guid | Should -Be ([Guid]::Empty)
-				$spec.Min | Should -Be ([ModuleFastSpec]::MinVersion)
-				$spec.Max | Should -Be ([ModuleFastSpec]::MaxVersion)
+				$spec.Min | Should -Be ([TBBModuleFastSpec]::MinVersion)
+				$spec.Max | Should -Be ([TBBModuleFastSpec]::MaxVersion)
 				$spec.Required | Should -BeNull
 			}
 
 			It 'Has non-settable properties' {
-				$spec = [ModuleFastSpec]'Test'
+				$spec = [TBBModuleFastSpec]'Test'
 				{ $spec.Min = '1' } | Should -Throw
 				{ $spec.Max = '1' } | Should -Throw
 				{ $spec.Required = '1' } | Should -Throw
@@ -35,28 +52,28 @@ InModuleScope 'ModuleFast' {
 					ModuleName    = 'Test'
 					ModuleVersion = '2.1.5'
 				}
-				$spec = [ModuleFastSpec]$in
+				$spec = [TBBModuleFastSpec]$in
 				$spec.Name | Should -Be 'Test'
 				$spec.Guid | Should -Be ([Guid]::Empty)
 				$spec.Min | Should -Be '2.1.5'
-				$spec.Max | Should -Be ([ModuleFastSpec]::MaxVersion)
+				$spec.Max | Should -Be ([TBBModuleFastSpec]::MaxVersion)
 				$spec.Required | Should -BeNull
 			}
 		}
 
 		Context 'ModuleSpecification Conversion' {
 			It 'Name' {
-				$spec = [ModuleSpecification][ModuleFastSpec]'Test'
+				$spec = [ModuleSpecification][TBBModuleFastSpec]'Test'
 				$spec.Name | Should -Be 'Test'
 				$spec.Version | Should -Be '0.0.0'
 			}
 			It 'RequiredVersion' {
-				$spec = [ModuleSpecification][ModuleFastSpec]::new('Test', '1.2.3')
+				$spec = [ModuleSpecification][TBBModuleFastSpec]::new('Test', '1.2.3')
 				$spec.Name | Should -Be 'Test'
 				$spec.RequiredVersion | Should -Be '1.2.3'
 			}
 			It 'ModuleVersion' {
-				$spec = [ModuleSpecification][ModuleFastSpec]::new('Test', '1.2.3', '')
+				$spec = [ModuleSpecification][TBBModuleFastSpec]::new('Test', '1.2.3', '')
 				$spec.Name | Should -Be 'Test'
 				$spec.Version | Should -Be '1.2.3'
 			}
@@ -65,49 +82,49 @@ InModuleScope 'ModuleFast' {
 		Context 'ParseVersion' {
 			It 'parses a normal version' {
 				$version = '1.2.3'
-				$result = [ModuleFastSpec]::ParseVersion($version)
+				$result = [TBBModuleFastSpec]::ParseVersion($version)
 				$result.Major | Should -Be 1
 				$result.Minor | Should -Be 2
 				$result.Patch | Should -Be 3
 				$result.PreReleaseLabel | Should -BeNull
 				$result.BuildLabel | Should -BeNull
-				[ModuleFastSpec]::ParseSemanticVersion($result) | Should -BeExactly $version
+				[TBBModuleFastSpec]::ParseSemanticVersion($result) | Should -BeExactly $version
 			}
 			It 'parses a system version' {
 				$version = '1.2.3.4'
-				$result = [ModuleFastSpec]::ParseVersion($version)
+				$result = [TBBModuleFastSpec]::ParseVersion($version)
 				$result.Major | Should -Be 1
 				$result.Minor | Should -Be 2
 				$result.Patch | Should -Be (3 + 1)
 				$result.PreReleaseLabel | Should -Be (4).ToString().PadLeft(10, '0')
 				$result.BuildLabel | Should -Be 'SYSTEMVERSION.HASREVISION'
-				[ModuleFastSpec]::ParseSemanticVersion($result) | Should -BeExactly $version
+				[TBBModuleFastSpec]::ParseSemanticVersion($result) | Should -BeExactly $version
 			}
 			It 'parses a major/minor only version' {
 				$version = '1.4'
-				$result = [ModuleFastSpec]::ParseVersion($version)
+				$result = [TBBModuleFastSpec]::ParseVersion($version)
 				$result.Major | Should -Be 1
 				$result.Minor | Should -Be 4
 				$result.Patch | Should -Be 0
 				$result.PreReleaseLabel | Should -BeNull
 				$result.BuildLabel | Should -Be 'SYSTEMVERSION.NOBUILD'
-				[ModuleFastSpec]::ParseSemanticVersion($result) | Should -BeExactly $version
+				[TBBModuleFastSpec]::ParseSemanticVersion($result) | Should -BeExactly $version
 			}
 			It 'parses a patch version being zero' {
 				$version = '1.4.0.5'
-				$result = [ModuleFastSpec]::ParseVersion($version)
+				$result = [TBBModuleFastSpec]::ParseVersion($version)
 				$result.Major | Should -Be 1
 				$result.Minor | Should -Be 4
 				$result.Patch | Should -Be (0 + 1)
 				$result.PreReleaseLabel | Should -Be (5).ToString().PadLeft(10, '0')
 				$result.BuildLabel | Should -Be 'SYSTEMVERSION.HASREVISION'
-				[ModuleFastSpec]::ParseSemanticVersion($result) | Should -BeExactly $version
+				[TBBModuleFastSpec]::ParseSemanticVersion($result) | Should -BeExactly $version
 			}
 		}
 		Context 'ParseSemanticVersion' {
 			It 'parses a normal version' {
 				$version = '1.2.3'
-				$result = [ModuleFastSpec]::ParseSemanticVersion($version)
+				$result = [TBBModuleFastSpec]::ParseSemanticVersion($version)
 				$result.Major | Should -Be 1
 				$result.Minor | Should -Be 2
 				$result.Build | Should -Be 3
@@ -115,7 +132,7 @@ InModuleScope 'ModuleFast' {
 			}
 			It 'strips non-version fields' {
 				$version = '1.2.3-something+4'
-				$result = [ModuleFastSpec]::ParseSemanticVersion($version)
+				$result = [TBBModuleFastSpec]::ParseSemanticVersion($version)
 				$result.Major | Should -Be 1
 				$result.Minor | Should -Be 2
 				$result.Build | Should -Be 3
@@ -124,98 +141,98 @@ InModuleScope 'ModuleFast' {
 		}
 		Context 'Overlap' {
 			It 'overlaps exactly' {
-				$spec1 = [ModuleFastSpec]::new('Test', '1.2.3', '1.2.4')
-				$spec2 = [ModuleFastSpec]::new('Test', '1.2.3', '1.2.4')
+				$spec1 = [TBBModuleFastSpec]::new('Test', '1.2.3', '1.2.4')
+				$spec2 = [TBBModuleFastSpec]::new('Test', '1.2.3', '1.2.4')
 				$spec1.Overlaps($spec2) | Should -BeTrue
 				$spec2.Overlaps($spec1) | Should -BeTrue
 			}
 			It 'overlaps partially' {
-				$spec1 = [ModuleFastSpec]::new('Test', '1.2.1', '1.2.4')
-				$spec2 = [ModuleFastSpec]::new('Test', '1.2.3', '1.2.5')
+				$spec1 = [TBBModuleFastSpec]::new('Test', '1.2.1', '1.2.4')
+				$spec2 = [TBBModuleFastSpec]::new('Test', '1.2.3', '1.2.5')
 				$spec1.Overlaps($spec2) | Should -BeTrue
 				$spec2.Overlaps($spec1) | Should -BeTrue
 			}
 			It 'no overlap' {
-				$spec1 = [ModuleFastSpec]::new('Test', '1.2.1', '1.2.2')
-				$spec2 = [ModuleFastSpec]::new('Test', '1.2.3', '1.2.4')
+				$spec1 = [TBBModuleFastSpec]::new('Test', '1.2.1', '1.2.2')
+				$spec2 = [TBBModuleFastSpec]::new('Test', '1.2.3', '1.2.4')
 				$spec1.Overlaps($spec2) | Should -BeFalse
 				$spec2.Overlaps($spec1) | Should -BeFalse
 			}
 			It 'overlaps partially with no max' {
-				$spec1 = [ModuleFastSpec]::new('Test', '1.2.1', '1.2.4')
-				$spec2 = [ModuleFastSpec]::new('Test', '1.2.3')
+				$spec1 = [TBBModuleFastSpec]::new('Test', '1.2.1', '1.2.4')
+				$spec2 = [TBBModuleFastSpec]::new('Test', '1.2.3')
 				$spec1.Overlaps($spec2) | Should -BeTrue
 				$spec2.Overlaps($spec1) | Should -BeTrue
 			}
 			It 'overlaps partially with no min' {
-				$spec1 = [ModuleFastSpec]::new('Test', $null, '1.2.4')
-				$spec2 = [ModuleFastSpec]::new('Test', '1.2.3')
+				$spec1 = [TBBModuleFastSpec]::new('Test', $null, '1.2.4')
+				$spec2 = [TBBModuleFastSpec]::new('Test', '1.2.3')
 				$spec1.Overlaps($spec2) | Should -BeTrue
 				$spec2.Overlaps($spec1) | Should -BeTrue
 			}
 			It 'overlaps partially with no min or max' {
-				$spec1 = [ModuleFastSpec]'Test'
-				$spec2 = [ModuleFastSpec]'Test'
+				$spec1 = [TBBModuleFastSpec]'Test'
+				$spec2 = [TBBModuleFastSpec]'Test'
 				$spec1.Overlaps($spec2) | Should -BeTrue
 				$spec2.Overlaps($spec1) | Should -BeTrue
 			}
 			It 'errors on different Names' {
-				$spec1 = [ModuleFastSpec]'Test'
-				$spec2 = [ModuleFastSpec]'Test2'
+				$spec1 = [TBBModuleFastSpec]'Test'
+				$spec2 = [TBBModuleFastSpec]'Test2'
 				{ $spec1.Overlaps($spec2) } | Should -Throw
 				{ $spec2.Overlaps($spec1) } | Should -Throw
 			}
 			It 'errors on different GUIDs' {
-				$spec1 = [ModuleFastSpec]::new('Test', '1.0.0', [Guid]::NewGuid())
-				$spec2 = [ModuleFastSpec]::new('Test', '1.0.0', [Guid]::NewGuid())
+				$spec1 = [TBBModuleFastSpec]::new('Test', '1.0.0', [Guid]::NewGuid())
+				$spec2 = [TBBModuleFastSpec]::new('Test', '1.0.0', [Guid]::NewGuid())
 				{ $spec1.Overlaps($spec2) } | Should -Throw
 				{ $spec2.Overlaps($spec1) } | Should -Throw
 			}
 		}
 		Context 'Equals' {
-			It 'ModuleFastSpec' {
-				$spec1 = [ModuleFastSpec]::new('Test', '1.2.3', '1.2.4')
-				$spec2 = [ModuleFastSpec]::new('Test', '1.2.3', '1.2.4')
+			It 'TBBModuleFastSpec' {
+				$spec1 = [TBBModuleFastSpec]::new('Test', '1.2.3', '1.2.4')
+				$spec2 = [TBBModuleFastSpec]::new('Test', '1.2.3', '1.2.4')
 				$spec1 -eq $spec2 | Should -BeTrue
 			}
-			It 'ModuleFastSpec not equal on name' {
-				$spec1 = [ModuleFastSpec]'Test'
-				$spec2 = [ModuleFastSpec]'Test2'
+			It 'TBBModuleFastSpec not equal on name' {
+				$spec1 = [TBBModuleFastSpec]'Test'
+				$spec2 = [TBBModuleFastSpec]'Test2'
 				$spec1 -eq $spec2 | Should -BeFalse
 			}
-			It 'ModuleFastSpec not equal on min' {
-				$spec1 = [ModuleFastSpec]::new('Test', '1.2.3')
-				$spec2 = [ModuleFastSpec]::new('Test', '1.2.4')
+			It 'TBBModuleFastSpec not equal on min' {
+				$spec1 = [TBBModuleFastSpec]::new('Test', '1.2.3')
+				$spec2 = [TBBModuleFastSpec]::new('Test', '1.2.4')
 				$spec1 -eq $spec2 | Should -BeFalse
 			}
-			It 'ModuleFastSpec not equal on max' {
-				$spec1 = [ModuleFastSpec]::new('Test', $null, '1.2.3')
-				$spec2 = [ModuleFastSpec]::new('Test', $null, '1.2.4')
+			It 'TBBModuleFastSpec not equal on max' {
+				$spec1 = [TBBModuleFastSpec]::new('Test', $null, '1.2.3')
+				$spec2 = [TBBModuleFastSpec]::new('Test', $null, '1.2.4')
 				$spec1 -eq $spec2 | Should -BeFalse
 			}
 			It 'Version In Range' {
-				$spec1 = [ModuleFastSpec]::new('Test', '1.2.3', '1.2.4')
+				$spec1 = [TBBModuleFastSpec]::new('Test', '1.2.3', '1.2.4')
 				$version = [Version]::new('1.2.3')
 				$spec1 -eq $version | Should -BeTrue
 			}
 			It 'Version NotIn Range' {
-				$spec1 = [ModuleFastSpec]::new('Test', '1.2.3', '1.2.4')
+				$spec1 = [TBBModuleFastSpec]::new('Test', '1.2.3', '1.2.4')
 				$version = [Version]::new('1.2.2')
 				$spec1 -eq $version | Should -BeFalse
 			}
 			It 'SemanticVersion In Range' {
-				$spec1 = [ModuleFastSpec]::new('Test', '1.2.3', '1.2.4')
+				$spec1 = [TBBModuleFastSpec]::new('Test', '1.2.3', '1.2.4')
 				$version = [SemanticVersion]::new('1.2.3')
 				$spec1 -eq $version | Should -BeTrue
 			}
 			It 'SemanticVersion NotIn Range' {
-				$spec1 = [ModuleFastSpec]::new('Test', '1.2.3', '1.2.4')
+				$spec1 = [TBBModuleFastSpec]::new('Test', '1.2.3', '1.2.4')
 				$version = [SemanticVersion]::new('1.2.3')
 				$spec1 -eq $version | Should -BeTrue
 			}
 
 			It 'String Comparisons' {
-				$spec = [ModuleFastSpec]::new('Test', '1.1.1', '2.2.2')
+				$spec = [TBBModuleFastSpec]::new('Test', '1.1.1', '2.2.2')
 				$spec -eq '1' | Should -BeFalse
 				$spec -eq '2' | Should -BeTrue
 				$spec -eq '3' | Should -BeFalse
@@ -237,9 +254,9 @@ InModuleScope 'ModuleFast' {
 
 		Context 'Compare' {
 			It 'Sorts' {
-				$spec1 = [ModuleFastSpec]::new('Test', '1.2.3')
-				$spec2 = [ModuleFastSpec]::new('Test', '1.2.4')
-				$spec3 = [ModuleFastSpec]::new('Test', '1.2.5')
+				$spec1 = [TBBModuleFastSpec]::new('Test', '1.2.3')
+				$spec2 = [TBBModuleFastSpec]::new('Test', '1.2.4')
+				$spec3 = [TBBModuleFastSpec]::new('Test', '1.2.5')
 				$spec3, $spec1, $spec2
 			| Sort-Object
 			| Should -Be @( $spec1, $spec2, $spec3 )
@@ -253,36 +270,36 @@ InModuleScope 'ModuleFast' {
 
 	Describe 'HashSet Dedupe (GetHashCode)' {
 		It 'Name' {
-			$spec1 = [ModuleFastSpec]'Test'
-			$spec2 = [ModuleFastSpec]'Test'
+			$spec1 = [TBBModuleFastSpec]'Test'
+			$spec2 = [TBBModuleFastSpec]'Test'
 			$spec1.GetHashCode() | Should -Be $spec2.GetHashCode()
 		}
 		It 'RequiredVersion' {
-			$spec1 = [ModuleFastSpec]::new('Test', '1.2.3')
-			$spec2 = [ModuleFastSpec]::new('Test', '1.2.3')
+			$spec1 = [TBBModuleFastSpec]::new('Test', '1.2.3')
+			$spec2 = [TBBModuleFastSpec]::new('Test', '1.2.3')
 			$spec1.GetHashCode() | Should -Be $spec2.GetHashCode()
 		}
 		It 'Min and Max Version' {
-			$spec1 = [ModuleFastSpec]::new('Test', '1.2.3', '1.2.4')
-			$spec2 = [ModuleFastSpec]::new('Test', '1.2.3', '1.2.4')
+			$spec1 = [TBBModuleFastSpec]::new('Test', '1.2.3', '1.2.4')
+			$spec2 = [TBBModuleFastSpec]::new('Test', '1.2.3', '1.2.4')
 			$spec1.GetHashCode() | Should -Be $spec2.GetHashCode()
 		}
 		It 'Max Version Only' {
-			$spec1 = [ModuleFastSpec]::new('Test', $null, '1.2.4')
-			$spec2 = [ModuleFastSpec]::new('Test', $null, '1.2.4')
+			$spec1 = [TBBModuleFastSpec]::new('Test', $null, '1.2.4')
+			$spec2 = [TBBModuleFastSpec]::new('Test', $null, '1.2.4')
 			$spec1.GetHashCode() | Should -Be $spec2.GetHashCode()
 		}
 		It 'Min Version Only' {
-			$spec1 = [ModuleFastSpec]::new('Test', '1.2.3')
-			$spec2 = [ModuleFastSpec]::new('Test', '1.2.3')
+			$spec1 = [TBBModuleFastSpec]::new('Test', '1.2.3')
+			$spec2 = [TBBModuleFastSpec]::new('Test', '1.2.3')
 			$spec1.GetHashCode() | Should -Be $spec2.GetHashCode()
 		}
 		It 'Guid' {
-			[HashSet[ModuleFastSpec]]$hs = @{}
+			[HashSet[TBBModuleFastSpec]]$hs = @{}
 			$guid = [Guid]::NewGuid()
-			$spec1 = [ModuleFastSpec]::new('Test', '1.2.4', $guid)
+			$spec1 = [TBBModuleFastSpec]::new('Test', '1.2.4', $guid)
 			$hs.Add($spec1) | Should -BeTrue
-			$spec2 = [ModuleFastSpec]::new('Test', '1.2.4', $guid)
+			$spec2 = [TBBModuleFastSpec]::new('Test', '1.2.4', $guid)
 			$hs.Add($spec2) | Should -BeFalse
 		}
 	}
@@ -304,7 +321,7 @@ InModuleScope 'ModuleFast' {
 	}
 }
 
-Describe 'Get-ModuleFastPlan' -Tag 'E2E' {
+Describe 'Get-TBBModuleFastPlan' -Tag 'E2E' {
 	BeforeAll {
 		$SCRIPT:__existingPSModulePath = $env:PSModulePath
 		$env:PSModulePath = $testDrive
@@ -322,7 +339,7 @@ Describe 'Get-ModuleFastPlan' -Tag 'E2E' {
 	$SCRIPT:moduleName = 'Az.Accounts'
 
 	It 'Gets Module by <Test>' {
-		$actual = Get-ModuleFastPlan $spec
+		$actual = Get-TBBModuleFastPlan $spec
 		$actual | Should -HaveCount 1
 		$actual.Name | Should -Be $moduleName
 		$actual.Required -as [Version] | Should -Not -BeNullOrEmpty
@@ -332,22 +349,22 @@ Describe 'Get-ModuleFastPlan' -Tag 'E2E' {
 		@{Test = 'RequiredVersionNotLatest'; Spec = @{ ModuleName = $moduleName; RequiredVersion = '2.7.3' } }
 	)
 	It 'Gets Module with 1 dependency' {
-		Get-ModuleFastPlan 'Az.Compute' | Should -HaveCount 2
+		Get-TBBModuleFastPlan 'Az.Compute' | Should -HaveCount 2
 	}
 	It 'Gets Module with lots of dependencies (Az)' {
 		#TODO: Mocks
-		Get-ModuleFastPlan 'Az' | Should -HaveCount 78
+		Get-TBBModuleFastPlan 'Az' | Should -HaveCount 78
 	}
 	It 'Gets Module with 4 section version number and a 4 section version number dependency (VMware.VimAutomation.Common)' {
-		Get-ModuleFastPlan 'VMware.VimAutomation.Common' | Should -HaveCount 2
+		Get-TBBModuleFastPlan 'VMware.VimAutomation.Common' | Should -HaveCount 2
 
 	}
 	It 'Gets multiple modules' {
-		Get-ModuleFastPlan 'Az', 'VMware.PowerCLI' | Should -HaveCount 153
+		Get-TBBModuleFastPlan 'Az', 'VMware.PowerCLI' | Should -HaveCount 153
 	}
 }
 
-Describe 'Install-ModuleFast' -Tag 'E2E' {
+Describe 'Install-TBBModuleFast' -Tag 'E2E' {
 	BeforeAll {
 		$SCRIPT:__existingPSModulePath = $env:PSModulePath
 		filter Limit-ModulePath {
@@ -385,11 +402,11 @@ Describe 'Install-ModuleFast' -Tag 'E2E' {
 	}
 	It 'Installs Module' {
 		#HACK: The testdrive mount is not available in the threadjob runspaces so we need to translate it
-		Install-ModuleFast @imfParams 'Az.Accounts'
+		Install-TBBModuleFast @imfParams 'Az.Accounts'
 		Get-Item $installTempPath\Az.Accounts\*\Az.Accounts.psd1 | Should -Not -BeNullOrEmpty
 	}
 	It '4 section version numbers (VMware.PowerCLI)' {
-		Install-ModuleFast @imfParams 'VMware.VimAutomation.Common'
+		Install-TBBModuleFast @imfParams 'VMware.VimAutomation.Common'
 		Get-Item $installTempPath\VMware*\*\*.psd1 | ForEach-Object {
 			$moduleFolderVersion = $_ | Split-Path | Split-Path -Leaf
 			Import-PowerShellDataFile -Path $_.FullName | ForEach-Object ModuleVersion | Should -Be $moduleFolderVersion
@@ -399,19 +416,19 @@ Describe 'Install-ModuleFast' -Tag 'E2E' {
 		| Should -HaveCount 2
 	}
 	It 'lots of dependencies (Az)' {
-		Install-ModuleFast @imfParams 'Az'
+		Install-TBBModuleFast @imfParams 'Az'
 		(Get-Module Az* -ListAvailable).count | Should -BeGreaterThan 10
 	}
 	It 'specific requiredVersion' {
-		Install-ModuleFast @imfParams @{ ModuleName = 'Az.Accounts'; RequiredVersion = '2.7.4' }
+		Install-TBBModuleFast @imfParams @{ ModuleName = 'Az.Accounts'; RequiredVersion = '2.7.4' }
 		Get-Module Az.Accounts -ListAvailable
 		| Limit-ModulePath $installTempPath
 		| Select-Object -ExpandProperty Version
 		| Should -Be '2.7.4'
 	}
 	It 'specific requiredVersion when newer version is present' {
-		Install-ModuleFast @imfParams 'Az.Accounts'
-		Install-ModuleFast @imfParams @{ ModuleName = 'Az.Accounts'; RequiredVersion = '2.7.4' }
+		Install-TBBModuleFast @imfParams 'Az.Accounts'
+		Install-TBBModuleFast @imfParams @{ ModuleName = 'Az.Accounts'; RequiredVersion = '2.7.4' }
 		$installedVersions = Get-Module Az.Accounts -ListAvailable
 		| Limit-ModulePath $installTempPath
 		| Select-Object -ExpandProperty Version
@@ -420,22 +437,22 @@ Describe 'Install-ModuleFast' -Tag 'E2E' {
 		$installedVersions | Should -Contain '2.7.4'
 	}
 	It 'Installs when Maximumversion is lower than currently installed' {
-		Install-ModuleFast @imfParams 'Az.Accounts'
-		Install-ModuleFast @imfParams @{ ModuleName = 'Az.Accounts'; MaximumVersion = '2.7.3' }
+		Install-TBBModuleFast @imfParams 'Az.Accounts'
+		Install-TBBModuleFast @imfParams @{ ModuleName = 'Az.Accounts'; MaximumVersion = '2.7.3' }
 		Get-Module Az.Accounts -ListAvailable
 		| Limit-ModulePath $installTempPath
 		| Select-Object -ExpandProperty Version
 		| Should -Contain '2.7.3'
 	}
 	It 'Only installs once when Update is specified and latest has not changed' {
-		Install-ModuleFast @imfParams 'Az.Accounts' -Update
+		Install-TBBModuleFast @imfParams 'Az.Accounts' -Update
 		#This will error if the file already exists
-		Install-ModuleFast @imfParams 'Az.Accounts' -Update
+		Install-TBBModuleFast @imfParams 'Az.Accounts' -Update
 	}
 
 	It 'Updates only dependent module that requires update' {
-		Install-ModuleFast @imfParams @{ ModuleName = 'Az.Accounts'; RequiredVersion = '2.10.2' }
-		Install-ModuleFast @imfParams	@{ ModuleName = 'Az.Compute'; RequiredVersion = '5.0.0' }
+		Install-TBBModuleFast @imfParams @{ ModuleName = 'Az.Accounts'; RequiredVersion = '2.10.2' }
+		Install-TBBModuleFast @imfParams	@{ ModuleName = 'Az.Compute'; RequiredVersion = '5.0.0' }
 		Get-Module Az.Accounts -ListAvailable
 		| Limit-ModulePath $installTempPath
 		| Select-Object -ExpandProperty Version
@@ -443,7 +460,7 @@ Describe 'Install-ModuleFast' -Tag 'E2E' {
 		| Select-Object -First 1
 		| Should -Be '2.10.2'
 
-		Install-ModuleFast @imfParams 'Az.Compute', 'Az.Accounts' #Should not update
+		Install-TBBModuleFast @imfParams 'Az.Compute', 'Az.Accounts' #Should not update
 		Get-Module Az.Accounts -ListAvailable
 		| Limit-ModulePath $installTempPath
 		| Select-Object -ExpandProperty Version
@@ -451,7 +468,7 @@ Describe 'Install-ModuleFast' -Tag 'E2E' {
 		| Select-Object -First 1
 		| Should -Be '2.10.2'
 
-		Install-ModuleFast @imfParams 'Az.Compute' -Update #Should disregard local install and update latest Az.Accounts
+		Install-TBBModuleFast @imfParams 'Az.Compute' -Update #Should disregard local install and update latest Az.Accounts
 		Get-Module Az.Accounts -ListAvailable
 		| Limit-ModulePath $installTempPath
 		| Select-Object -ExpandProperty Version
