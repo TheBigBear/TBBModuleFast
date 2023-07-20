@@ -99,7 +99,7 @@ function Install-TBBModuleFast {
 	#We want to maintain a single HttpClient for the life of the module. This isn't as big of a deal as it used to be but
 	#it is still a best practice.
 	if (-not $SCRIPT:__TBBModuleFastHttpClient) {
-		$SCRIPT:__TBBModuleFastHttpClient = New-ModuleFastClient -Credential $Credential
+		$SCRIPT:__TBBModuleFastHttpClient = New-TBBModuleFastClient -Credential $Credential
 		if (-not $SCRIPT:__TBBModuleFastHttpClient) {
 			throw 'Failed to create TBBModuleFast HTTPClient. This is a bug'
 		}
