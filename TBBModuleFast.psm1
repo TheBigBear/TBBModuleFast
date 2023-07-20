@@ -676,7 +676,7 @@ class TBBModuleFastSpec : IComparable {
 	#HACK: A helper because we can't do constructor chaining in PowerShell
 	#https://stackoverflow.com/questions/44413206/constructor-chaining-in-powershell-call-other-constructors-in-the-same-class
 	#HACK: Guid and SemanticVersion are non-nullable and just causes problems trying to enforce it here, we make sure it doesn't get set to a null value later on
-	hidden Initialize([string]$Name, $Min, $Max, $Guid, [TBBModuleSpecification]$moduleSpec) {
+	hidden Initialize([string]$Name, $Min, $Max, $Guid, [ModuleSpecification]$moduleSpec) {
 		Add-Getters
 
 		#Explode out moduleSpec information if present and then follow the same validation logic
@@ -737,7 +737,7 @@ class TBBModuleFastSpec : IComparable {
 
 
 	#TODO: Version versions maybe? Probably should just use the parser and let those go to string
-	TBBModuleFastSpec([TBBModuleSpecification]$ModuleSpec) {
+	TBBModuleFastSpec([ModuleSpecification]$ModuleSpec) {
 		$this.Initialize($null, $null, $null, $null, $ModuleSpec)
 	}
 
