@@ -26,12 +26,12 @@ High Performance Powershell Module Installation
 THIS IS NOT FOR PRODUCTION, it should be considered "Fragile" and has very little error handling and type safety
 It also doesn't generate the PowershellGet XML files currently, so PSGet v2 will see them as "External" modules (PSGetv3 doesn't care)
 #>
-function Install-ModuleFast {
+function Install-TBBModuleFast {
 	[CmdletBinding(SupportsShouldProcess)]
 	param(
 		$ModulesToInstall,
 		[string]$Destination,
-		$ModuleCache = $(New-Item -ItemType Directory -Force -Path Temp:\ModuleFastCache),
+		$ModuleCache = $(New-Item -ItemType Directory -Force -Path Temp:\TBBModuleFastCache),
 		#The repository to scan for modules. TODO: Multi-repo support
 		[string]$Source = 'https://pwsh.gallery/index.json',
 		#The credential to use to authenticate. Only basic auth is supported
@@ -81,15 +81,15 @@ function Install-ModuleFast {
 
 	#We want to maintain a single HttpClient for the life of the module. This isn't as big of a deal as it used to be but
 	#it is still a best practice.
-	if (-not $SCRIPT:__ModuleFastHttpClient) {
-		$SCRIPT:__ModuleFastHttpClient = New-ModuleFastClient -Credential $Credential
-		if (-not $SCRIPT:__ModuleFastHttpClient) {
-			throw 'Failed to create ModuleFast HTTPClient. This is a bug'
+	if (-not $SCRIPT:__TBBModuleFastHttpClient) {
+		$SCRIPT:__TBBModuleFastHttpClient = New-ModuleFastClient -Credential $Credential
+		if (-not $SCRIPT:__TBBModuleFastHttpClient) {
+			throw 'Failed to create TBBModuleFast HTTPClient. This is a bug'
 		}
 	}
-	$httpClient = $SCRIPT:__ModuleFastHttpClient
-	Write-Progress -Id 1 -Activity 'Install-ModuleFast' -Status 'Plan' -PercentComplete 1
-	$plan = Get-ModuleFastPlan $ModulesToInstall -HttpClient $httpClient -Source $Source -Update:$Update
+	$httpClient = $SCRIPT:__TBBModuleFastHttpClient
+	Write-Progress -Id 1 -Activity 'Install-TBBModuleFast' -Status 'Plan' -PercentComplete 1
+	$plan = Get-TBBModuleFastPlan $ModulesToInstall -HttpClient $httpClient -Source $Source -Update:$Update
 	$WhatIfPreference = $currentWhatIfPreference
 
 	if ($plan.Count -eq 0) {
@@ -115,7 +115,7 @@ function Install-ModuleFast {
 	}
 
 
-	Write-Progress -Id 1 -Activity 'Install-ModuleFast' -Status "Installing: $($plan.count) Modules" -PercentComplete 50
+	Write-Progress -Id 1 -Activity 'Install-TBBModuleFast' -Status "Installing: $($plan.count) Modules" -PercentComplete 50
 
 	$cancelSource = [CancellationTokenSource]::new()
 
@@ -127,16 +127,16 @@ function Install-ModuleFast {
 		HttpClient        = $httpClient
 		Update            = $Update
 	}
-	Install-ModuleFastHelper @installHelperParams
-	Write-Progress -Id 1 -Activity 'Install-ModuleFast' -Completed
+	Install-TBBModuleFastHelper @installHelperParams
+	Write-Progress -Id 1 -Activity 'Install-TBBModuleFast' -Completed
 	Write-Verbose "`u{2705} All required modules installed! Exiting."
 }
 
-function New-ModuleFastClient {
+function New-TBBModuleFastClient {
 	param(
 		[PSCredential]$Credential
 	)
-	Write-Debug 'Creating new ModuleFast HTTP Client. This should only happen once!'
+	Write-Debug 'Creating new TBBModuleFast HTTP Client. This should only happen once!'
 	$ErrorActionPreference = 'Stop'
 	#SocketsHttpHandler is the modern .NET 5+ default handler for HttpClient.
 	#We want more concurrent connections to improve our performance and fairly aggressive timeouts
@@ -158,7 +158,7 @@ function New-ModuleFastClient {
 
 	#This user agent is important, it indicates to pwsh.gallery that we want dependency-only metadata
 	#TODO: Do this with a custom header instead
-	$userHeaderAdded = $httpClient.DefaultRequestHeaders.UserAgent.TryParseAdd('ModuleFast (github.com/JustinGrote/ModuleFast)')
+	$userHeaderAdded = $httpClient.DefaultRequestHeaders.UserAgent.TryParseAdd('TBBModuleFast (github.com/TheBigBear/TBBModuleFast)')
 	if (-not $userHeaderAdded) {
 		throw 'Failed to add User-Agent header to HttpClient. This is a bug'
 	}
@@ -171,7 +171,7 @@ function New-ModuleFastClient {
 	return $httpClient
 }
 
-function Get-ModuleFastPlan {
+function Get-TBBModuleFastPlan {
 	param(
 		#A list of modules to install, specified either as strings or as hashtables with nuget version style (e.g. @{Name='test';Version='1.0'})
 		[Parameter(Mandatory, ValueFromPipeline)][Object]$Name,
@@ -182,13 +182,13 @@ function Get-ModuleFastPlan {
 		#By default we use in-place modules if they satisfy the version requirements. This switch will force a search for all latest modules
 		[Switch]$Update,
 		[PSCredential]$Credential,
-		[HttpClient]$HttpClient = $(New-ModuleFastClient -Credential $Credential),
+		[HttpClient]$HttpClient = $(New-TBBModuleFastClient -Credential $Credential),
 		[int]$ParentProgress
 	)
 
 	BEGIN {
 		$ErrorActionPreference = 'Stop'
-		[HashSet[ModuleFastSpec]]$modulesToResolve = @()
+		[HashSet[TBBModuleFastSpec]]$modulesToResolve = @()
 
 		#We use this token to cancel the HTTP requests if the user hits ctrl-C without having to dispose of the HttpClient
 		$cancelToken = [CancellationTokenSource]::new()
@@ -208,10 +208,10 @@ function Get-ModuleFastPlan {
 	}
 	END {
 		# A deduplicated list of modules to install
-		[HashSet[ModuleFastSpec]]$modulesToInstall = @{}
+		[HashSet[TBBModuleFastSpec]]$modulesToInstall = @{}
 
 		# We use this as a fast lookup table for the context of the request
-		[Dictionary[Task[String], ModuleFastSpec]]$resolveTasks = @{}
+		[Dictionary[Task[String], TBBModuleFastSpec]]$resolveTasks = @{}
 
 		#We use this to track the tasks that are currently running
 		#We dont need this to be ConcurrentList because we only manipulate it in the "main" runspace.
@@ -242,14 +242,14 @@ function Get-ModuleFastPlan {
 				if ($thisTaskIndex -eq $noTasksYetCompleted) { continue }
 
 				#The Plan whitespace is intentional so that it lines up with install progress using the compact format
-				Write-Progress -Id 1 -Activity 'Install-ModuleFast' -Status "Plan: Resolving $tasksCompleteCount/$resolveTaskCount Module Dependencies" -PercentComplete ((($tasksCompleteCount / $resolveTaskCount) * 50) + 1)
+				Write-Progress -Id 1 -Activity 'Install-TBBModuleFast' -Status "Plan: Resolving $tasksCompleteCount/$resolveTaskCount Module Dependencies" -PercentComplete ((($tasksCompleteCount / $resolveTaskCount) * 50) + 1)
 
 				#TODO: This only indicates headers were received, content may still be downloading and we dont want to block on that.
 				#For now the content is small but this could be faster if we have another inner loop that WaitAny's on content
 				#TODO: Perform a HEAD query to see if something has changed
 
 				[Task[string]]$completedTask = $currentTasks[$thisTaskIndex]
-				[ModuleFastSpec]$currentModuleSpec = $resolveTasks[$completedTask]
+				[TBBModuleFastSpec]$currentModuleSpec = $resolveTasks[$completedTask]
 
 				Write-Debug "$currentModuleSpec`: Processing Response"
 				# We use GetAwaiter so we get proper error messages back, as things such as network errors might occur here.
@@ -294,7 +294,7 @@ function Get-ModuleFastPlan {
 					| Where-Object {
 						$PSItem -and !$PSItem.contains('-')
 					}
-					Limit-ModuleFastSpecVersions -ModuleSpec $currentModuleSpec -Highest -Versions $inlinedVersions
+					Limit-TBBModuleFastSpecVersions -ModuleSpec $currentModuleSpec -Highest -Versions $inlinedVersions
 				}
 
 				$selectedEntry = if ($versionMatch) {
@@ -317,8 +317,8 @@ function Get-ModuleFastPlan {
 					# TODO: Should probably typesafe and validate this using classes
 
 					$pages = $response.items | Where-Object {
-						[SemanticVersion]$upper = [ModuleFastSpec]::ParseVersionString($PSItem.Upper)
-						[SemanticVersion]$lower = [ModuleFastSpec]::ParseVersionString($PSItem.Lower)
+						[SemanticVersion]$upper = [TBBModuleFastSpec]::ParseVersionString($PSItem.Upper)
+						[SemanticVersion]$lower = [TBBModuleFastSpec]::ParseVersionString($PSItem.Lower)
 						if ($currentModuleSpec.Required) {
 							if ($currentModuleSpec.Required -le $upper -and $currentModuleSpec.Required -ge $lower ) {
 								return $true
@@ -377,7 +377,7 @@ function Get-ModuleFastPlan {
 						$PSItem -and !$PSItem.contains('-')
 					}
 
-					[Version]$versionMatch = Limit-ModuleFastSpecVersions -ModuleSpec $currentModuleSpec -Versions $inlinedVersions -Highest
+					[Version]$versionMatch = Limit-TBBModuleFastSpecVersions -ModuleSpec $currentModuleSpec -Versions $inlinedVersions -Highest
 					if ($versionMatch) {
 						Write-Debug "$currentModuleSpec`: Found satisfying version $versionMatch in one of the additional pages."
 
@@ -392,7 +392,7 @@ function Get-ModuleFastPlan {
 				}
 
 				if (-not $selectedEntry.packageContent) { throw "No package content found for $($selectedEntry.packageContent). This should never happen and is a bug" }
-				[ModuleFastSpec]$moduleInfo = [ModuleFastSpec]::new(
+				[TBBModuleFastSpec]$moduleInfo = [TBBModuleFastSpec]::new(
 					$selectedEntry.id,
 					$selectedEntry.version,
 					[uri]$selectedEntry.packageContent
@@ -419,13 +419,13 @@ function Get-ModuleFastPlan {
 					# HACK: I should be using the Id provided by the server, for now I'm just guessing because
 					# I need to add it to the ComparableModuleSpec class
 					Write-Debug "$currentModuleSpec`: Processing dependencies"
-					[List[ModuleFastSpec]]$dependencies = $dependencyInfo | ForEach-Object {
-						[ModuleFastSpec]::new($PSItem.id, [NuGetRange]$PSItem.range)
+					[List[TBBModuleFastSpec]]$dependencies = $dependencyInfo | ForEach-Object {
+						[TBBModuleFastSpec]::new($PSItem.id, [NuGetRange]$PSItem.range)
 					}
 					Write-Debug "$currentModuleSpec has $($dependencies.count) dependencies"
 
 					# TODO: Where loop filter maybe
-					[ModuleFastSpec[]]$dependenciesToResolve = $dependencies | Where-Object {
+					[TBBModuleFastSpec[]]$dependenciesToResolve = $dependencies | Where-Object {
 						# TODO: This dependency resolution logic should be a separate function
 						# Maybe ModulesToInstall should be nested/grouped by Module Name then version to speed this up, as it currently
 						# enumerates every time which shouldn't be a big deal for small dependency trees but might be a
@@ -518,10 +518,10 @@ function Get-ModuleFastPlan {
 #endregion Public
 
 #region Private
-function Install-ModuleFastHelper {
+function Install-TBBModuleFastHelper {
 	[CmdletBinding()]
 	param(
-		[ModuleFastSpec[]]$ModuleToInstall,
+		[TBBModuleFastSpec[]]$ModuleToInstall,
 		[string]$Destination,
 		[string]$ModuleCache,
 		[CancellationToken]$CancellationToken,
@@ -612,7 +612,7 @@ function Install-ModuleFastHelper {
 
 
 
-class ModuleFastSpec : IComparable {
+class TBBModuleFastSpec : IComparable {
 	<#
 	A custom version of ModuleSpecification that is comparable on its values, and will deduplicate in a HashSet if all
 	values are the same. This should also be consistent across processes and can be cached.
@@ -636,9 +636,9 @@ class ModuleFastSpec : IComparable {
 	hidden [string]Get_Name() { return $this._Name }
 	hidden [guid]$_Guid
 	hidden [guid]Get_Guid() { return $this._Guid }
-	hidden [SemanticVersion]$_Min = [ModuleFastSpec]::MinVersion
+	hidden [SemanticVersion]$_Min = [TBBModuleFastSpec]::MinVersion
 	hidden [SemanticVersion]Get_Min() { return $this._Min }
-	hidden [SemanticVersion]$_Max = [ModuleFastSpec]::MaxVersion
+	hidden [SemanticVersion]$_Max = [TBBModuleFastSpec]::MaxVersion
 	hidden [SemanticVersion]Get_Max() { return $this._Max }
 
 	hidden [SemanticVersion]Get_Required() {
@@ -650,16 +650,16 @@ class ModuleFastSpec : IComparable {
 	}
 
 	#ModuleSpecification Compatible Getters
-	hidden [Version]Get_RequiredVersion() { return [ModuleFastSpec]::ParseSemanticVersion($this.Required) }
-	hidden [Version]Get_Version() { return [ModuleFastSpec]::ParseSemanticVersion($this.Min) }
-	hidden [Version]Get_MaximumVersion() { return [ModuleFastSpec]::ParseSemanticVersion($this.Max) }
+	hidden [Version]Get_RequiredVersion() { return [TBBModuleFastSpec]::ParseSemanticVersion($this.Required) }
+	hidden [Version]Get_Version() { return [TBBModuleFastSpec]::ParseSemanticVersion($this.Min) }
+	hidden [Version]Get_MaximumVersion() { return [TBBModuleFastSpec]::ParseSemanticVersion($this.Max) }
 
 	#Constructors
 
 	#HACK: A helper because we can't do constructor chaining in PowerShell
 	#https://stackoverflow.com/questions/44413206/constructor-chaining-in-powershell-call-other-constructors-in-the-same-class
 	#HACK: Guid and SemanticVersion are non-nullable and just causes problems trying to enforce it here, we make sure it doesn't get set to a null value later on
-	hidden Initialize([string]$Name, $Min, $Max, $Guid, [ModuleSpecification]$moduleSpec) {
+	hidden Initialize([string]$Name, $Min, $Max, $Guid, [TBBModuleSpecification]$moduleSpec) {
 		Add-Getters
 
 		#Explode out moduleSpec information if present and then follow the same validation logic
@@ -667,11 +667,11 @@ class ModuleFastSpec : IComparable {
 			$Name = $ModuleSpec.Name
 			$Guid = $ModuleSpec.Guid
 			if ($ModuleSpec.RequiredVersion) {
-				$Min = [ModuleFastSpec]::ParseVersionString($ModuleSpec.RequiredVersion)
-				$Max = [ModuleFastSpec]::ParseVersionString($ModuleSpec.RequiredVersion)
+				$Min = [TBBModuleFastSpec]::ParseVersionString($ModuleSpec.RequiredVersion)
+				$Max = [TBBModuleFastSpec]::ParseVersionString($ModuleSpec.RequiredVersion)
 			} else {
-				$Min = $moduleSpec.Version ? [ModuleFastSpec]::ParseVersionString($ModuleSpec.Version) : $null
-				$Max = $moduleSpec.MaximumVersion ? [ModuleFastSpec]::ParseVersionString($ModuleSpec.MaximumVersion) : $null
+				$Min = $moduleSpec.Version ? [TBBModuleFastSpec]::ParseVersionString($ModuleSpec.Version) : $null
+				$Max = $moduleSpec.MaximumVersion ? [TBBModuleFastSpec]::ParseVersionString($ModuleSpec.MaximumVersion) : $null
 			}
 		}
 
@@ -687,45 +687,45 @@ class ModuleFastSpec : IComparable {
 
 	# HACK: We dont want a string constructor because it messes with Equals (we dont want strings implicitly cast to ModuleFastSpec).
 	# ModuleName is a workaround for this and still make it easy to define a spec that matches all versions of a module.
-	ModuleFastSpec([string]$Name) {
+	TBBModuleFastSpec([string]$Name) {
 		$this.Initialize($Name, $null, $null, $null, $null)
 	}
-	ModuleFastSpec([string]$Name, [string]$Required) {
-		[SemanticVersion]$requiredVersion = [ModuleFastSpec]::ParseVersionString($Required)
+	TBBModuleFastSpec([string]$Name, [string]$Required) {
+		[SemanticVersion]$requiredVersion = [TBBModuleFastSpec]::ParseVersionString($Required)
 		$this.Initialize($Name, $requiredVersion, $requiredVersion, $null, $null)
 	}
-	ModuleFastSpec([string]$Name, [String]$Required, [Guid]$Guid) {
-		[SemanticVersion]$requiredVersion = [ModuleFastSpec]::ParseVersionString($Required)
+	TBBModuleFastSpec([string]$Name, [String]$Required, [Guid]$Guid) {
+		[SemanticVersion]$requiredVersion = [TBBModuleFastSpec]::ParseVersionString($Required)
 		$this.Initialize($Name, $requiredVersion, $requiredVersion, $Guid, $null)
 	}
-	ModuleFastSpec([string]$Name, [String]$Required, [Uri]$DownloadLink) {
-		[SemanticVersion]$requiredVersion = [ModuleFastSpec]::ParseVersionString($Required)
+	TBBModuleFastSpec([string]$Name, [String]$Required, [Uri]$DownloadLink) {
+		[SemanticVersion]$requiredVersion = [TBBModuleFastSpec]::ParseVersionString($Required)
 		$this.Initialize($Name, $requiredVersion, $requiredVersion, $null, $null)
 		$this._DownloadLink = [uri]$DownloadLink
 	}
-	ModuleFastSpec([string]$Name, [string]$Min, [string]$Max) {
-		[SemanticVersion]$minVer = $min ? [ModuleFastSpec]::ParseVersionString($min) : $null
-		[SemanticVersion]$maxVer = $max ? [ModuleFastSpec]::ParseVersionString($max) : $null
+	TBBModuleFastSpec([string]$Name, [string]$Min, [string]$Max) {
+		[SemanticVersion]$minVer = $min ? [TBBModuleFastSpec]::ParseVersionString($min) : $null
+		[SemanticVersion]$maxVer = $max ? [TBBModuleFastSpec]::ParseVersionString($max) : $null
 		$this.Initialize($Name, $minVer, $maxVer, $null, $null)
 	}
 
 	# These can be used for performance to avoid parsing to string and back. Probably makes little difference
-	ModuleFastSpec([string]$Name, [SemanticVersion]$Required) {
+	TBBModuleFastSpec([string]$Name, [SemanticVersion]$Required) {
 		$this.Initialize($Name, $Required, $Required, $null, $null)
 	}
-	ModuleFastSpec([string]$Name, [NugetRange]$Range) {
+	TBBModuleFastSpec([string]$Name, [NugetRange]$Range) {
 		$Range.Min
 		$this.Initialize($Name, $range.Min, $range.Max, $null, $null)
 	}
 
 
 	#TODO: Version versions maybe? Probably should just use the parser and let those go to string
-	ModuleFastSpec([ModuleSpecification]$ModuleSpec) {
+	TBBModuleFastSpec([TBBModuleSpecification]$ModuleSpec) {
 		$this.Initialize($null, $null, $null, $null, $ModuleSpec)
 	}
 
 	#Hashtable constructor works the same as for moduleSpecification for ease of use/understanding
-	ModuleFastSpec([hashtable]$hashtable) {
+	TBBModuleFastSpec([hashtable]$hashtable) {
 		#Will implicitly convert the hashtable to ModuleSpecification
 		$this.Initialize($null, $null, $null, $null, $hashtable)
 	}
@@ -738,14 +738,14 @@ class ModuleFastSpec : IComparable {
 		return $false
 	}
 	[bool] Matches([Version]$Version) {
-		return $this.Matches([ModuleFastSpec]::ParseVersion($Version))
+		return $this.Matches([TBBModuleFastSpec]::ParseVersion($Version))
 	}
 	[bool] Matches([String]$Version) {
-		return $this.Matches([ModuleFastSpec]::ParseVersionString($Version))
+		return $this.Matches([TBBModuleFastSpec]::ParseVersionString($Version))
 	}
 
 	#Determines if this spec is at least partially inside of the supplied spec
-	[bool] Overlaps([ModuleFastSpec]$Spec) {
+	[bool] Overlaps([TBBModuleFastSpec]$Spec) {
 		if ($null -eq $Spec) { return $false }
 		if ($Spec.Name -ne $this.Name) { throw "Supplied Spec Name $($Spec.Name) does not match this spec name $($this.Name)" }
 		if ($Spec.Guid -ne $this.Guid) { throw "Supplied Spec Guid $($Spec.Name) does not match this spec guid $($this.Name)" }
@@ -759,7 +759,7 @@ class ModuleFastSpec : IComparable {
 	static [SemanticVersion] ParseVersionString([string]$Version) {
 		if (-not $Version) { throw [NotSupportedException]'Null or empty strings are not supported' }
 		if ($Version -as [Version]) {
-			return [ModuleFastSpec]::ParseVersion($Version)
+			return [TBBModuleFastSpec]::ParseVersion($Version)
 		}
 		return $Version
 	}
@@ -826,7 +826,7 @@ class ModuleFastSpec : IComparable {
 	[Version] ToVersion() {
 		if (-not $this.Required) { throw [NotSupportedException]'You can only convert Required specs to a version.' }
 		#Warning: Return type is not enforced by the method, that's why we did it explicitly here.
-		return [Version][ModuleFastSpec]::ParseSemanticVersion($this.Required)
+		return [Version][TBBModuleFastSpec]::ParseSemanticVersion($this.Required)
 	}
 
 	###Implicit Methods
@@ -836,13 +836,13 @@ class ModuleFastSpec : IComparable {
 	[string] ToString() {
 		$name = $this._Name + ($this._Guid -ne [Guid]::Empty ? " [$($this._Guid)]" : '')
 		$versionString = switch ($true) {
-				($this.Min -eq [ModuleFastSpec]::MinVersion -and $this.Max -eq [ModuleFastSpec]::MaxVersion) {
+				($this.Min -eq [TBBModuleFastSpec]::MinVersion -and $this.Max -eq [TBBModuleFastSpec]::MaxVersion) {
 				#This is the default, so we don't need to print it
 				break
 			}
-				($null -ne $this.required) { "@$([ModuleFastSpec]::VersionToString($this.Required))"; break }
-				($this.Min -eq [ModuleFastSpec]::MinVersion) { "<$([ModuleFastSpec]::VersionToString($this.Max))"; break }
-				($this.Max -eq [ModuleFastSpec]::MaxVersion) { ">$([ModuleFastSpec]::VersionToString($this.Min))"; break }
+				($null -ne $this.required) { "@$([TBBModuleFastSpec]::VersionToString($this.Required))"; break }
+				($this.Min -eq [TBBModuleFastSpec]::MinVersion) { "<$([TBBModuleFastSpec]::VersionToString($this.Max))"; break }
+				($this.Max -eq [TBBModuleFastSpec]::MaxVersion) { ">$([TBBModuleFastSpec]::VersionToString($this.Min))"; break }
 			default { ":$($this.Min)-$($this.Max)" }
 		}
 		return $name + $versionString
@@ -853,12 +853,12 @@ class ModuleFastSpec : IComparable {
 		if ($null -eq $version) { return $null }
 		if ($Version.BuildLabel -match 'SYSTEMVERSION' -and $version.PrereleaseLabel -as [int]) {
 			#This is a system version, we need to convert it back to a system version
-			return [ModuleFastSpec]::ParseSemanticVersion($version).ToString()
+			return [TBBModuleFastSpec]::ParseSemanticVersion($version).ToString()
 		}
 		return $version.ToString()
 	}
 
-	#BUG: We cannot implement IEquatable directly because we need to self-reference ModuleFastSpec before it exists.
+	#BUG: We cannot implement IEquatable directly because we need to self-reference TBBModuleFastSpec before it exists.
 	#We can however just add Equals() method
 
 	#Implementation of https://learn.microsoft.com/en-us/dotnet/api/system.iequatable-1.equals?view=net-6.0
@@ -866,29 +866,29 @@ class ModuleFastSpec : IComparable {
 		if ($null -eq $obj) { return $false }
 		switch ($obj.GetType()) {
 			#Comparing ModuleSpecs means that we want to ensure they are structurally the same
-						([ModuleFastSpec]) {
+						([TBBModuleFastSpec]) {
 				return $this.Name -eq $obj.Name -and
 				$this.Guid -eq $obj.Guid -and
 				$obj.Min -ge $this.Min -and
 				$obj.Max -le $this.Max
 			}
-						([ModuleSpecification]) { return $this.Equals([ModuleFastSpec]$obj) }
+						([ModuleSpecification]) { return $this.Equals([TBBModuleFastSpec]$obj) }
 
 			#When comparing a version, we want to return equal if the version is within the range of the spec
 						([SemanticVersion]) { return $this.CompareTo($obj) -eq 0 }
-						([string]) { return $this.Equals([ModuleFastSpec]::ParseVersionString($obj)) }
-						([Version]) { return $this.Equals([ModuleFastSpec]::ParseVersion($obj)) }
+						([string]) { return $this.Equals([TBBModuleFastSpec]::ParseVersionString($obj)) }
+						([Version]) { return $this.Equals([TBBModuleFastSpec]::ParseVersion($obj)) }
 			default {
 				#Try a cast. This should work for ModuleSpecification
 				try {
-					return $this.CompareTo([ModuleFastSpec]$obj)
+					return $this.CompareTo([TBBModuleFastSpec]$obj)
 				} catch [RuntimeException] {
 					#This is a cast error, we want to limit this so that any errors from CompareTo bubble up
-					throw "Cannot compare ModuleFastSpec to $($obj.GetType())"
+					throw "Cannot compare TBBModuleFastSpec to $($obj.GetType())"
 				}
 			}
 		}
-		throw [InvalidOperationException]'Unexpected Equals was found. This should never happen and is a bug in ModuleFastSpec'
+		throw [InvalidOperationException]'Unexpected Equals was found. This should never happen and is a bug in TBBModuleFastSpec'
 	}
 
 	#Implementation of https://learn.microsoft.com/en-us/dotnet/api/system.icomparable-1.compareto
@@ -904,35 +904,35 @@ class ModuleFastSpec : IComparable {
 				if ($obj -gt $this.Max) { return -1 }
 				throw 'Unexpected comparison result. This should never happen and is a bug in ModuleFastSpec'
 			}
-						([ModuleFastSpec]) {
+						([TBBModuleFastSpec]) {
 				if (-not $obj.Required) { throw [NotSupportedException]'Cannot compare two range specs as they can overlap. Supply a required spec to this range' }
 				return $this.CompareTo($obj.Required) #Should go to SemanticVersion
 			}
 						([Version]) {
-				return $this.CompareTo([ModuleFastSpec]::ParseVersion($obj))
+				return $this.CompareTo([TBBModuleFastSpec]::ParseVersion($obj))
 			}
 						([String]) {
-				return $this.CompareTo([ModuleFastSpec]::ParseVersionString($obj))
+				return $this.CompareTo([TBBModuleFastSpec]::ParseVersionString($obj))
 			}
 			default {
 				if ($this.Equals($obj)) { return 0 }
 				#Try a cast. This should work for ModuleSpecification
 				try {
-					return $this.CompareTo([ModuleFastSpec]$obj)
+					return $this.CompareTo([TBBModuleFastSpec]$obj)
 				} catch [RuntimeException] {
 					#This is a cast error, we want to limit this so that any errors from CompareTo bubble up
-					throw "Cannot compare ModuleFastSpec to $($obj.GetType())"
+					throw "Cannot compare TBBModuleFastSpec to $($obj.GetType())"
 				}
 			}
 		}
-		throw [InvalidOperationException]'Unexpected Compare was found. This should never happen and is a bug in ModuleFastSpec'
+		throw [InvalidOperationException]'Unexpected Compare was found. This should never happen and is a bug in TBBModuleFastSpec'
 	}
 
 	[int] GetHashCode() {
 		return $this.ToString().GetHashCode()
 	}
 
-	static [ModuleSpecification] op_Implicit([ModuleFastSpec]$moduleFastSpec) {
+	static [ModuleSpecification] op_Implicit([TBBModuleFastSpec]$moduleFastSpec) {
 		$moduleSpecification = @{
 			ModuleName = $moduleFastSpec.Name
 		}
@@ -940,11 +940,11 @@ class ModuleFastSpec : IComparable {
 			$moduleSpecification['RequiredVersion'] = $moduleFastSpec.Required
 		} else {
 			#Module Specifications like nulls, so we will accomodate that.
-			if ($moduleFastSpec.Min -gt [ModuleFastSpec]::MinVersion) {
-				$moduleSpecification['ModuleVersion'] = [ModuleFastSpec]::ParseSemanticVersion($moduleFastSpec.Min)
+			if ($moduleFastSpec.Min -gt [TBBModuleFastSpec]::MinVersion) {
+				$moduleSpecification['ModuleVersion'] = [TBBModuleFastSpec]::ParseSemanticVersion($moduleFastSpec.Min)
 			}
-			if ($moduleFastSpec.Max -lt [ModuleFastSpec]::MaxVersion) {
-				$moduleSpecification['MaximumVersion'] = [ModuleFastSpec]::ParseSemanticVersion($moduleFastSpec.Max)
+			if ($moduleFastSpec.Max -lt [TBBModuleFastSpec]::MaxVersion) {
+				$moduleSpecification['MaximumVersion'] = [TBBModuleFastSpec]::ParseSemanticVersion($moduleFastSpec.Max)
 			}
 		}
 		#HACK: This could be more specific but it works for this case
@@ -1306,11 +1306,11 @@ function Get-NormalizedVersions ([Version]$Version) {
 <#
 Given an array of versions, find the ones that satisfy the module spec. Returns $false if no match is found.
 #>
-function Limit-ModuleFastSpecVersions {
+function Limit-TBBModuleFastSpecVersions {
 	[OutputType([Version[]])]
 	[OutputType([Version], ParameterSetName = 'Highest')]
 	param(
-		[Parameter(Mandatory)][ModuleFastSpec]$ModuleSpec,
+		[Parameter(Mandatory)][TBBModuleFastSpec]$ModuleSpec,
 		#Versions that are potential candidates to satisfy the modulespec
 		[Parameter(Mandatory)][HashSet[Version]]$Versions,
 		#Only return the highest version that satisfies the spec
@@ -1322,11 +1322,11 @@ function Limit-ModuleFastSpecVersions {
 	-not $Highest ? $candidates : $candidates | Sort-Object -Descending | Select-Object -First 1
 }
 
-function Limit-ModuleFastSpecSemanticVersions {
+function Limit-TBBModuleFastSpecSemanticVersions {
 	[OutputType([SemanticVersion[]])]
 	[OutputType([Version], ParameterSetName = 'Highest')]
 	param(
-		[Parameter(Mandatory)][ModuleFastSpec]$ModuleSpec,
+		[Parameter(Mandatory)][TBBModuleFastSpec]$ModuleSpec,
 		#Versions that are potential candidates to satisfy the modulespec
 		[Parameter(Mandatory)][HashSet[SemanticVersion]]$Versions,
 		#Only return the highest version that satisfies the spec
@@ -1337,13 +1337,13 @@ function Limit-ModuleFastSpecSemanticVersions {
 	}
 	-not $Highest ? $Versions : @($Versions | Sort-Object -Descending | Select-Object -First 1)
 }
-function Limit-ModuleFastSpecs {
-	[OutputType([ModuleFastSpec[]])]
+function Limit-TBBModuleFastSpecs {
+	[OutputType([TBBModuleFastSpec[]])]
 	[OutputType([Version], ParameterSetName = 'Highest')]
 	param(
-		[Parameter(Mandatory)][ModuleFastSpec]$ModuleSpec,
+		[Parameter(Mandatory)][TBBModuleFastSpec]$ModuleSpec,
 		#Versions that are potential candidates to satisfy the modulespec
-		[Parameter(Mandatory)][HashSet[ModuleFastSpec]]$ModuleSpecs,
+		[Parameter(Mandatory)][HashSet[TBBModuleFastSpec]]$ModuleSpecs,
 		#Only return the highest version that satisfies the spec
 		[Parameter(ParameterSetName = 'Highest')][Switch]$Highest
 	)
@@ -1354,7 +1354,7 @@ function Limit-ModuleFastSpecs {
 }
 
 try {
-	Update-TypeData -TypeName 'ModuleFastSpec' -DefaultDisplayPropertySet 'Name', 'Required', 'Min', 'Max' -ErrorAction Stop
+	Update-TypeData -TypeName 'TBBModuleFastSpec' -DefaultDisplayPropertySet 'Name', 'Required', 'Min', 'Max' -ErrorAction Stop
 } catch [RuntimeException] {
 	if ($PSItem -notmatch 'is already present') { throw }
 }
@@ -1380,4 +1380,4 @@ function Get-StringHash ([string]$String, [string]$Algorithm = 'SHA256') {
 #   To fix this we will just use the name out of the module.psd1 when installing
 # FIXME: DBops dependency version issue
 
-Export-ModuleMember -Function Get-ModuleFastPlan, Install-ModuleFast
+Export-ModuleMember -Function Get-TBBModuleFastPlan, Install-TBBModuleFast
