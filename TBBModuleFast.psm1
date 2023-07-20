@@ -119,15 +119,15 @@ function Install-TBBModuleFast {
 	}
 
 	if (-not $PSCmdlet.ShouldProcess($Destination, "Install $($plan.Count) Modules")) {
-		Write-Host -fore DarkGreen "`u{1F680} ModuleFast Install Plan BEGIN"
+		Write-Host -fore DarkGreen "`u{1F680} TBBModuleFast Install Plan BEGIN"
 		#TODO: Separate planned installs and dependencies
 		$plan
-		| Select-Object Name, @{N = 'Version'; E = { [ModuleFastSpec]::VersionToString($_.Required) } }
+		| Select-Object Name, @{N = 'Version'; E = { [TBBModuleFastSpec]::VersionToString($_.Required) } }
 		| Sort-Object Name
 		| Format-Table -AutoSize
 		| Out-String
 		| Write-Host -ForegroundColor DarkGray
-		Write-Host -fore DarkGreen "`u{1F680} ModuleFast Install Plan END"
+		Write-Host -fore DarkGreen "`u{1F680} TBBModuleFast Install Plan END"
 		return
 	}
 
@@ -619,7 +619,7 @@ function Install-TBBModuleFastHelper {
 		if (-not $installJobs.Remove($completedJob)) { throw 'Could not remove completed job from list. This is a bug, report it' }
 		$installed++
 		Write-Verbose "$installedModule`: Successfuly installed to $installPath"
-		Write-Progress -Id 1 -Activity 'Install-ModuleFast' -Status "Install: $installed/$($ModuleToInstall.count) Modules" -PercentComplete ((($installed / $ModuleToInstall.count) * 50) + 50)
+		Write-Progress -Id 1 -Activity 'Install-TBBModuleFast' -Status "Install: $installed/$($ModuleToInstall.count) Modules" -PercentComplete ((($installed / $ModuleToInstall.count) * 50) + 50)
 	}
 }
 
@@ -702,7 +702,7 @@ class TBBModuleFastSpec : IComparable {
 		}
 	}
 
-	# HACK: We dont want a string constructor because it messes with Equals (we dont want strings implicitly cast to ModuleFastSpec).
+	# HACK: We dont want a string constructor because it messes with Equals (we dont want strings implicitly cast to TBBModuleFastSpec).
 	# ModuleName is a workaround for this and still make it easy to define a spec that matches all versions of a module.
 	TBBModuleFastSpec([string]$Name) {
 		$this.Initialize($Name, $null, $null, $null, $null)
@@ -800,7 +800,7 @@ class TBBModuleFastSpec : IComparable {
 		}
 
 		#Otherwise we need to explicitly note this came from a system version for when we parse it back
-		$buildLabels.Add([ModuleFastSpec]::SYSTEM_VERSION_LABEL)
+		$buildLabels.Add([TBBModuleFastSpec]::SYSTEM_VERSION_LABEL)
 		$preReleaseLabel = $null
 		if ($Version.Revision -ge 0) {
 			#We do this so that the sort order is correct in semver (prereleases sort before major versions and is lexically sorted)
@@ -824,7 +824,7 @@ class TBBModuleFastSpec : IComparable {
 		}
 
 		[string[]]$buildFlags = $Version.BuildLabel -split '\.'
-		if ($BuildFlags -notcontains [ModuleFastSpec]::SYSTEM_VERSION_LABEL) {
+		if ($BuildFlags -notcontains [TBBModuleFastSpec]::SYSTEM_VERSION_LABEL) {
 			#This is a semantic-compatible version, we can just return it
 			return [Version]::new($Version.Major, $Version.Minor, $Version.Patch)
 		}
@@ -837,7 +837,7 @@ class TBBModuleFastSpec : IComparable {
 			return [Version]::new($Version.Major, $Version.Minor, $Version.Patch - 1, $Version.PreReleaseLabel)
 		}
 
-		throw [InvalidDataException]"Unexpected situation when parsing SemanticVersion $Version to Version. This is a bug in ModuleFastSpec and should be reported"
+		throw [InvalidDataException]"Unexpected situation when parsing SemanticVersion $Version to Version. This is a bug in TBBModuleFastSpec and should be reported"
 	}
 
 	[Version] ToVersion() {
@@ -919,7 +919,7 @@ class TBBModuleFastSpec : IComparable {
 				if ($obj -ge $this.Min -and $obj -le $this.Max) { return 0 }
 				if ($obj -lt $this.Min) { return 1 }
 				if ($obj -gt $this.Max) { return -1 }
-				throw 'Unexpected comparison result. This should never happen and is a bug in ModuleFastSpec'
+				throw 'Unexpected comparison result. This should never happen and is a bug in TBBModuleFastSpec'
 			}
 						([TBBModuleFastSpec]) {
 				if (-not $obj.Required) { throw [NotSupportedException]'Cannot compare two range specs as they can overlap. Supply a required spec to this range' }
@@ -1012,14 +1012,14 @@ class NugetRange {
 		$this.MaxInclusive = $right -eq ']'
 
 		if ($range -notmatch '\,') {
-			$req = [String]::IsNullOrWhiteSpace($range) ? [NugetRange]::MinVersion : [ModuleFastSpec]::ParseVersionString($range)
+			$req = [String]::IsNullOrWhiteSpace($range) ? [NugetRange]::MinVersion : [TBBModuleFastSpec]::ParseVersionString($range)
 			$this.Min = $req
 			$this.Max = $req
 			return
 		}
 		$minString, $maxString = $range.split(',')
-		if (-not [String]::IsNullOrWhiteSpace($minString)) { $this.Min = [ModuleFastSpec]::ParseVersionString($minString) }
-		if (-not [String]::IsNullOrWhiteSpace($maxString)) { $this.Max = [ModuleFastSpec]::ParseVersionString($maxString) }
+		if (-not [String]::IsNullOrWhiteSpace($minString)) { $this.Min = [TBBModuleFastSpec]::ParseVersionString($minString) }
+		if (-not [String]::IsNullOrWhiteSpace($maxString)) { $this.Max = [TBBModuleFastSpec]::ParseVersionString($maxString) }
 	}
 
 	static [SemanticVersion] Decrement([SemanticVersion]$version) {
@@ -1040,7 +1040,7 @@ class NugetRange {
 				return [SemanticVersion]::new($version.Major - 1, [int]::MaxValue, [int]::MaxValue)
 			}
 		}
-		throw [ArgumentOutOfRangeException]'Unexpected Decrement Scenario Occurred, this should never happen and is a bug in ModuleFastSpec'
+		throw [ArgumentOutOfRangeException]'Unexpected Decrement Scenario Occurred, this should never happen and is a bug in TBBModuleFastSpec'
 	}
 
 	static [SemanticVersion] Increment([SemanticVersion]$version) {
@@ -1061,7 +1061,7 @@ class NugetRange {
 				return [SemanticVersion]::new($version.Major - 1, [int]::MaxValue, [int]::MaxValue)
 			}
 		}
-		throw [ArgumentOutOfRangeException]'Unexpected Increment Scenario Occurred, this should never happen and is a bug in ModuleFastSpec'
+		throw [ArgumentOutOfRangeException]'Unexpected Increment Scenario Occurred, this should never happen and is a bug in TBBModuleFastSpec'
 	}
 }
 
@@ -1160,7 +1160,7 @@ function Add-DestinationToPSModulePath {
 	$myProfile = $profile.CurrentUserAllHosts
 
 	if (-not (Test-Path $myProfile)) {
-		if (-not $PSCmdlet.ShouldProcess($myProfile, "Allow ModuleFast to work by creating a profile at $myProfile.")) { return }
+		if (-not $PSCmdlet.ShouldProcess($myProfile, "Allow TBBModuleFast to work by creating a profile at $myProfile.")) { return }
 		Write-Verbose 'User All Hosts profile not found, creating one.'
 		New-Item -ItemType File -Path $myProfile -Force | Out-Null
 	}
@@ -1185,7 +1185,7 @@ function Add-DestinationToPSModulePath {
   $profileLine = $profileLine -replace '##DESTINATION##', $Destination
 
 	if ((Get-Content -Raw $myProfile) -notmatch [Regex]::Escape($ProfileLine)) {
-		if (-not $PSCmdlet.ShouldProcess($myProfile, "Allow ModuleFast to work by adding $Destination to your PSModulePath on startup by appending to your CurrentUserAllHosts profile. If you do not want this, add -NoProfileUpdate to Install-ModuleFast or add the specified destination to your powershell.config.json or to your PSModulePath another way.")) { return }
+		if (-not $PSCmdlet.ShouldProcess($myProfile, "Allow TBBModuleFast to work by adding $Destination to your PSModulePath on startup by appending to your CurrentUserAllHosts profile. If you do not want this, add -NoProfileUpdate to Install-ModuleFast or add the specified destination to your powershell.config.json or to your PSModulePath another way.")) { return }
 		Write-Verbose "Adding $Destination to profile $myProfile"
 		Add-Content -Path $myProfile -Value "`n`n"
 		Add-Content -Path $myProfile -Value $ProfileLine
@@ -1201,7 +1201,7 @@ function Find-LocalModule {
 	Searches local PSModulePath repositories
 	#>
 	param(
-		[Parameter(Mandatory)][ModuleFastSpec]$ModuleSpec,
+		[Parameter(Mandatory)][TBBModuleFastSpec]$ModuleSpec,
 		[string[]]$ModulePath = $($env:PSModulePath -split [Path]::PathSeparator),
 		[Switch]$Update
 	)
@@ -1283,7 +1283,7 @@ function Find-LocalModule {
 					continue
 				}
 
-				[Version]$versionMatch = Limit-ModuleFastSpecVersions -ModuleSpec $ModuleSpec -Versions $candidateVersions.Keys -Highest
+				[Version]$versionMatch = Limit-TBBModuleFastSpecVersions -ModuleSpec $ModuleSpec -Versions $candidateVersions.Keys -Highest
 				if (-not $versionMatch) {
 					[string[]]$candidateStrings = foreach ($candidate in $candidateVersions.keys) {
 						'{0} ({1})' -f $candidateVersions[$candidate], $candidate
@@ -1294,7 +1294,7 @@ function Find-LocalModule {
 
 				[string]$matchingManifest = $candidateVersions[$versionMatch]
 
-				if ($Update -and $moduleSpec.Max -gt [ModuleFastSpec]::ParseVersion($versionMatch)) {
+				if ($Update -and $moduleSpec.Max -gt [TBBModuleFastSpec]::ParseVersion($versionMatch)) {
 					Write-Debug "$moduleSpec`: Found a matching module version $versionMatch at $matchingManifest, but -Update was specified and the module spec allows for higher versions. Checking remote for updates..."
 					return $null
 				}
