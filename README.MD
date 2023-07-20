@@ -1,38 +1,38 @@
 
-![ModuleFast Logo](./images/logo.gif)
-# ModuleFast
+![TBBModuleFast Logo](./images/logo.gif)
+# TBBModuleFast
 
 This is a PowerShell module installer that is optimized for high performance and no external dependencies so it can be
 used as a bootstrap to quickly install and update modules in a declarative fashion.
 
 ## Quick Start Bootstrap
 
-### Load ModuleFast as a module for the session
+### Load TBBModuleFast as a module for the session
 
-ModuleFast can be quickly bootstrapped without relying on the built-in PowershellGet package manager
+TBBModuleFast can be quickly bootstrapped without relying on the built-in PowershellGet package manager
 
 ```powershell
-iwr bit.ly/modulefast | iex
-Install-ModuleFast ImportExcel
+iwr bit.ly/TBBModuleFast | iex
+Install-TBBModuleFast ImportExcel
 ```
 
 ### Single Line Installation (good for CI/CD)
 
-Adding args to the bootstrap passes them to Install-ModuleFast automatically, so you can one-line install modules as needed.
-This passes thru all arguments to ModuleFast.
+Adding args to the bootstrap passes them to Install-TBBModuleFast automatically, so you can one-line install modules as needed.
+This passes thru all arguments to TBBModuleFast.
 
 ```powershell
-& ([scriptblock]::Create((iwr 'bit.ly/modulefast'))) ImportExcel
+& ([scriptblock]::Create((iwr 'bit.ly/TBBModuleFast'))) ImportExcel
 ```
 
 ### ModuleSpecification Install
 
-You can specify a set of `ModuleSpecification` hashtables to Install-ModuleFast for explicit version constraints. For instance,
+You can specify a set of `ModuleSpecification` hashtables to Install-TBBModuleFast for explicit version constraints. For instance,
 you can have only a very specific version to be installed, or only versions below a certain to be installed as well.
 
 ```powershell
 #Installs the latest ImportExcel lower than 7.7.0
-& ([scriptblock]::Create((iwr 'bit.ly/modulefast'))) @{ModuleName='ImportExcel';MaximumVersion='7.7.0'}
+& ([scriptblock]::Create((iwr 'bit.ly/TBBModuleFast'))) @{ModuleName='ImportExcel';MaximumVersion='7.7.0'}
 ```
 
 ### NOTE: Recommended PSModulePath Prerequisite
@@ -52,7 +52,7 @@ You can alternatively set it as your `powershell.config.json` PSModulePath, add 
 ## Non-Goals
 
 **This is not a replacement for PowerShellGetv3** This is a compliment to the hard work being done there. The focus with
-PSGetv3 is compatibility, the focus with ModuleFast is speed at the expense of backwards compatability.
+PSGetv3 is compatibility, the focus with TBBModuleFast is speed at the expense of backwards compatability.
 
 ## How this script works
 
