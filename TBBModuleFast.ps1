@@ -6,22 +6,22 @@ param (
 	#Specify a specific release to use, otherwise 'latest' is used
 	[string]$Release = 'latest',
 	#Specify the user
-	[string]$User = 'JustinGrote',
+	[string]$User = 'TheBigBear',
 	#Specify the repo
-	[string]$Repo = 'ModuleFast',
+	[string]$Repo = 'TBBModuleFast',
 	#Specify the module file
-	[string]$ModuleFile = 'ModuleFast.psm1',
+	[string]$ModuleFile = 'TBBModuleFast.psm1',
 	#Entrypoint to be used if additional args are specified
-	[string]$EntryPoint = 'Install-ModuleFast',
+	[string]$EntryPoint = 'Install-TBBModuleFast',
 	#Specify the module name
-	[string]$ModuleName = 'ModuleFast',
+	[string]$ModuleName = 'TBBModuleFast',
 	#Path of the module to bootstrap. You normally won't change this but you can override it if you want
 	[string]$Uri = $(
 		$base = "https://github.com/$User/$Repo/releases/{0}/$ModuleFile";
 		$version = $Release -eq 'latest' ? 'latest/download' : "download/$Release";
 		$base -f $version
 	),
-	#All additional arguments passed to this script will be passed to Install-ModuleFast
+	#All additional arguments passed to this script will be passed to Install-TBBModuleFast
 	[Parameter(ValueFromRemainingArguments)]$installArgs
 )
 $ErrorActionPreference = 'Stop'
